@@ -3,9 +3,15 @@ import CommentList from "@/features/comment/components/comment-list.tsx";
 import { useAtom } from "jotai";
 import { asideStateAtom } from "@/components/layouts/global/hooks/atoms/sidebar-atom.ts";
 import React, { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
+import { TableOfContents } from "@/features/editor/components/table-of-contents/table-of-contents.tsx";
+import { useAtomValue } from "jotai";
+import { pageEditorAtom } from "@/features/editor/atoms/editor-atoms.ts";
 
 export default function Aside() {
   const [{ tab }] = useAtom(asideStateAtom);
+  const { t } = useTranslation();
+  const pageEditor = useAtomValue(pageEditorAtom);
 
   let title: string;
   let component: ReactNode;
@@ -14,6 +20,10 @@ export default function Aside() {
     case "comments":
       component = <CommentList />;
       title = "Comments";
+      break;
+    case "toc":
+      component = <TableOfContents editor={pageEditor} />;
+      title = "Table of contents";
       break;
     default:
       component = null;
@@ -25,7 +35,7 @@ export default function Aside() {
       {component && (
         <>
           <Text mb="md" fw={500}>
-            {title}
+            {t(title)}
           </Text>
 
           <ScrollArea

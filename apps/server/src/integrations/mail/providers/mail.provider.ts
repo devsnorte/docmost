@@ -33,7 +33,7 @@ export const mailDriverConfigProvider = {
     const driver = environmentService.getMailDriver().toLocaleLowerCase();
 
     switch (driver) {
-      case MailOption.SMTP:
+      case MailOption.SMTP: {
         let auth = undefined;
         if (
           environmentService.getSmtpUsername() &&
@@ -55,6 +55,7 @@ export const mailDriverConfigProvider = {
             ignoreTLS: environmentService.getSmtpIgnoreTLS(),
           } as SMTPTransport.Options,
         };
+      }
 
       case MailOption.Postmark:
         return {

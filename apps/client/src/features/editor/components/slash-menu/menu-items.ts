@@ -34,10 +34,12 @@ import {
   FigmaIcon,
   FramerIcon,
   GoogleDriveIcon,
+  GoogleSheetsIcon,
   LoomIcon,
   MiroIcon,
   TypeformIcon,
-  VimeoIcon, YoutubeIcon
+  VimeoIcon,
+  YoutubeIcon,
 } from "@/components/icons";
 
 const CommandGroups: SlashMenuGroupedItemsType = {
@@ -220,13 +222,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
           if (input.files?.length) {
             const file = input.files[0];
             const pos = editor.view.state.selection.from;
-            if (file.type.includes("image/*")) {
-              uploadImageAction(file, editor.view, pos, pageId);
-            } else if (file.type.includes("video/*")) {
-              uploadVideoAction(file, editor.view, pos, pageId);
-            } else {
-              uploadAttachmentAction(file, editor.view, pos, pageId);
-            }
+            uploadAttachmentAction(file, editor.view, pos, pageId, true);
           }
         };
         input.click();
@@ -251,7 +247,7 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       searchTerms: ["collapsible", "block", "toggle", "details", "expand"],
       icon: IconCaretRightFilled,
       command: ({ editor, range }: CommandProps) =>
-        editor.chain().focus().deleteRange(range).toggleDetails().run(),
+        editor.chain().focus().deleteRange(range).setDetails().run(),
     },
     {
       title: "Callout",
@@ -367,7 +363,12 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       searchTerms: ["airtable"],
       icon: AirtableIcon,
       command: ({ editor, range }: CommandProps) => {
-        editor.chain().focus().deleteRange(range).setEmbed({ provider: 'airtable' }).run();
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .setEmbed({ provider: "airtable" })
+          .run();
       },
     },
     {
@@ -376,7 +377,12 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       searchTerms: ["loom"],
       icon: LoomIcon,
       command: ({ editor, range }: CommandProps) => {
-        editor.chain().focus().deleteRange(range).setEmbed({ provider: 'loom' }).run();
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .setEmbed({ provider: "loom" })
+          .run();
       },
     },
     {
@@ -385,7 +391,12 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       searchTerms: ["figma"],
       icon: FigmaIcon,
       command: ({ editor, range }: CommandProps) => {
-        editor.chain().focus().deleteRange(range).setEmbed({ provider: 'figma' }).run();
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .setEmbed({ provider: "figma" })
+          .run();
       },
     },
     {
@@ -394,7 +405,12 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       searchTerms: ["typeform"],
       icon: TypeformIcon,
       command: ({ editor, range }: CommandProps) => {
-        editor.chain().focus().deleteRange(range).setEmbed({ provider: 'typeform' }).run();
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .setEmbed({ provider: "typeform" })
+          .run();
       },
     },
     {
@@ -403,7 +419,12 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       searchTerms: ["miro"],
       icon: MiroIcon,
       command: ({ editor, range }: CommandProps) => {
-        editor.chain().focus().deleteRange(range).setEmbed({ provider: 'miro' }).run();
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .setEmbed({ provider: "miro" })
+          .run();
       },
     },
     {
@@ -412,7 +433,12 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       searchTerms: ["youtube", "yt"],
       icon: YoutubeIcon,
       command: ({ editor, range }: CommandProps) => {
-        editor.chain().focus().deleteRange(range).setEmbed({ provider: 'youtube' }).run();
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .setEmbed({ provider: "youtube" })
+          .run();
       },
     },
     {
@@ -421,7 +447,12 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       searchTerms: ["vimeo"],
       icon: VimeoIcon,
       command: ({ editor, range }: CommandProps) => {
-        editor.chain().focus().deleteRange(range).setEmbed({ provider: 'vimeo' }).run();
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .setEmbed({ provider: "vimeo" })
+          .run();
       },
     },
     {
@@ -430,7 +461,12 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       searchTerms: ["framer"],
       icon: FramerIcon,
       command: ({ editor, range }: CommandProps) => {
-        editor.chain().focus().deleteRange(range).setEmbed({ provider: 'framer' }).run();
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .setEmbed({ provider: "framer" })
+          .run();
       },
     },
     {
@@ -439,7 +475,26 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       searchTerms: ["google drive", "gdrive"],
       icon: GoogleDriveIcon,
       command: ({ editor, range }: CommandProps) => {
-        editor.chain().focus().deleteRange(range).setEmbed({ provider: 'gdrive' }).run();
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .setEmbed({ provider: "gdrive" })
+          .run();
+      },
+    },
+    {
+      title: "Google Sheets",
+      description: "Embed Google Sheets content",
+      searchTerms: ["google sheets", "gsheets"],
+      icon: GoogleSheetsIcon,
+      command: ({ editor, range }: CommandProps) => {
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .setEmbed({ provider: "gsheets" })
+          .run();
       },
     },
   ],
@@ -456,7 +511,7 @@ export const getSuggestionItems = ({
   const fuzzyMatch = (query: string, target: string) => {
     let queryIndex = 0;
     target = target.toLowerCase();
-    for (let char of target) {
+    for (const char of target) {
       if (query[queryIndex] === char) queryIndex++;
       if (queryIndex === query.length) return true;
     }

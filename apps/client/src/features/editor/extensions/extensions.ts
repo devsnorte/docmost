@@ -35,7 +35,8 @@ import {
   CustomCodeBlock,
   Drawio,
   Excalidraw,
-  Embed
+  Embed,
+  Mention,
 } from "@docmost/editor-ext";
 import {
   randomElement,
@@ -64,6 +65,13 @@ import clojure from "highlight.js/lib/languages/clojure";
 import fortran from "highlight.js/lib/languages/fortran";
 import haskell from "highlight.js/lib/languages/haskell";
 import scala from "highlight.js/lib/languages/scala";
+import mentionRenderItems from "@/features/editor/components/mention/mention-suggestion.ts";
+import { ReactNodeViewRenderer } from "@tiptap/react";
+import MentionView from "@/features/editor/components/mention/mention-view.tsx";
+import i18n from "@/i18n.ts";
+import { MarkdownClipboard } from "@/features/editor/extensions/markdown-clipboard.ts";
+import EmojiCommand from "./emoji-command";
+import { CharacterCount } from "@tiptap/extension-character-count";
 
 const lowlight = createLowlight(common);
 lowlight.register("mermaid", plaintext);
@@ -94,13 +102,13 @@ export const mainExtensions = [
   Placeholder.configure({
     placeholder: ({ node }) => {
       if (node.type.name === "heading") {
-        return `Heading ${node.attrs.level}`;
+        return i18n.t("Heading {{level}}", { level: node.attrs.level });
       }
       if (node.type.name === "detailsSummary") {
-        return "Toggle title";
+        return i18n.t("Toggle title");
       }
       if (node.type.name === "paragraph") {
-        return 'Write anything. Enter "/" for commands';
+        return i18n.t('Write anything. Enter "/" for commands');
       }
     },
     includeChildren: true,
@@ -126,12 +134,29 @@ export const mainExtensions = [
   TextStyle,
   Color,
   SlashCommand,
+  EmojiCommand,
   Comment.configure({
     HTMLAttributes: {
       class: "comment-mark",
     },
   }),
-
+  Mention.configure({
+    suggestion: {
+      allowSpaces: true,
+      items: () => {
+        return [];
+      },
+      // @ts-ignore
+      render: mentionRenderItems,
+    },
+    HTMLAttributes: {
+      class: "mention",
+    },
+  }).extend({
+    addNodeView() {
+      return ReactNodeViewRenderer(MentionView);
+    },
+  }),
   Table.configure({
     resizable: true,
     lastColumnResizable: false,
@@ -140,7 +165,6 @@ export const mainExtensions = [
   TableRow,
   TableCell,
   TableHeader,
-
   MathInline.configure({
     view: MathInlineView,
   }),
@@ -184,7 +208,11 @@ export const mainExtensions = [
   }),
   Embed.configure({
     view: EmbedView,
-  })
+  }),
+  MarkdownClipboard.configure({
+    transformPastedText: true,
+  }),
+  CharacterCount
 ] as any;
 
 type CollabExtensions = (provider: HocuspocusProvider, user: IUser) => any[];

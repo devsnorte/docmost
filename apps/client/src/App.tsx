@@ -10,14 +10,6 @@ import Groups from "@/pages/settings/group/groups";
 import GroupInfo from "./pages/settings/group/group-info";
 import Spaces from "@/pages/settings/space/spaces.tsx";
 import { Error404 } from "@/components/ui/error-404.tsx";
-import { useQuerySubscription } from "@/features/websocket/use-query-subscription.ts";
-import { useAtom, useAtomValue } from "jotai";
-import { socketAtom } from "@/features/websocket/atoms/socket-atom.ts";
-import { useTreeSocket } from "@/features/websocket/use-tree-socket.ts";
-import { useEffect } from "react";
-import { io } from "socket.io-client";
-import { authTokensAtom } from "@/features/auth/atoms/auth-tokens-atom.ts";
-import { SOCKET_URL } from "@/features/websocket/types";
 import AccountPreferences from "@/pages/settings/account/account-preferences.tsx";
 import SpaceHome from "@/pages/space/space-home.tsx";
 import PageRedirect from "@/pages/page/page-redirect.tsx";
@@ -26,37 +18,18 @@ import { ErrorBoundary } from "react-error-boundary";
 import InviteSignup from "@/pages/auth/invite-signup.tsx";
 import ForgotPassword from "@/pages/auth/forgot-password.tsx";
 import PasswordReset from "./pages/auth/password-reset";
+import Billing from "@/ee/billing/pages/billing.tsx";
+import CloudLogin from "@/ee/pages/cloud-login.tsx";
+import CreateWorkspace from "@/ee/pages/create-workspace.tsx";
+import { isCloud } from "@/lib/config.ts";
+import { useTranslation } from "react-i18next";
+import Security from "@/ee/security/pages/security.tsx";
+import License from "@/ee/licence/pages/license.tsx";
+import { useRedirectToCloudSelect } from "@/ee/hooks/use-redirect-to-cloud-select.tsx";
 
 export default function App() {
-  const [, setSocket] = useAtom(socketAtom);
-  const authToken = useAtomValue(authTokensAtom);
-
-  useEffect(() => {
-    if (!authToken?.accessToken) {
-      return;
-    }
-    const newSocket = io(SOCKET_URL, {
-      transports: ["websocket"],
-      auth: {
-        token: authToken.accessToken,
-      },
-    });
-
-    // @ts-ignore
-    setSocket(newSocket);
-
-    newSocket.on("connect", () => {
-      console.log("ws connected");
-    });
-
-    return () => {
-      console.log("ws disconnected");
-      newSocket.disconnect();
-    };
-  }, [authToken?.accessToken]);
-
-  useQuerySubscription();
-  useTreeSocket();
+  const { t } = useTranslation();
+  useRedirectToCloudSelect();
 
   return (
     <>
@@ -64,21 +37,30 @@ export default function App() {
         <Route index element={<Navigate to="/home" />} />
         <Route path={"/login"} element={<LoginPage />} />
         <Route path={"/invites/:invitationId"} element={<InviteSignup />} />
-        <Route path={"/setup/register"} element={<SetupWorkspace />} />
         <Route path={"/forgot-password"} element={<ForgotPassword />} />
         <Route path={"/password-reset"} element={<PasswordReset />} />
+
+        {!isCloud() && (
+          <Route path={"/setup/register"} element={<SetupWorkspace />} />
+        )}
+
+        {isCloud() && (
+          <>
+            <Route path={"/create"} element={<CreateWorkspace />} />
+            <Route path={"/select"} element={<CloudLogin />} />
+          </>
+        )}
 
         <Route path={"/p/:pageSlug"} element={<PageRedirect />} />
 
         <Route element={<Layout />}>
           <Route path={"/home"} element={<Home />} />
-
           <Route path={"/s/:spaceSlug"} element={<SpaceHome />} />
           <Route
             path={"/s/:spaceSlug/p/:pageSlug"}
             element={
               <ErrorBoundary
-                fallback={<>Failed to load page. An error occurred.</>}
+                fallback={<>{t("Failed to load page. An error occurred.")}</>}
               >
                 <Page />
               </ErrorBoundary>
@@ -96,6 +78,9 @@ export default function App() {
             <Route path={"groups"} element={<Groups />} />
             <Route path={"groups/:groupId"} element={<GroupInfo />} />
             <Route path={"spaces"} element={<Spaces />} />
+            <Route path={"security"} element={<Security />} />
+            {!isCloud() && <Route path={"license"} element={<License />} />}
+            {isCloud() && <Route path={"billing"} element={<Billing />} />}
           </Route>
         </Route>
 

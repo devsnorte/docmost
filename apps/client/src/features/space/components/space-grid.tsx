@@ -1,13 +1,18 @@
 import { Text, Avatar, SimpleGrid, Card, rem } from "@mantine/core";
-import React from "react";
-import { useGetSpacesQuery } from "@/features/space/queries/space-query.ts";
+import React, { useEffect } from 'react';
+import {
+  prefetchSpace,
+  useGetSpacesQuery,
+} from "@/features/space/queries/space-query.ts";
 import { getSpaceUrl } from "@/lib/config.ts";
 import { Link } from "react-router-dom";
 import classes from "./space-grid.module.css";
 import { formatMemberCount } from "@/lib";
+import { useTranslation } from "react-i18next";
 
 export default function SpaceGrid() {
-  const { data, isLoading } = useGetSpacesQuery();
+  const { t } = useTranslation();
+  const { data, isLoading } = useGetSpacesQuery({ page: 1 });
 
   const cards = data?.items.map((space, index) => (
     <Card
@@ -16,6 +21,7 @@ export default function SpaceGrid() {
       radius="md"
       component={Link}
       to={getSpaceUrl(space.slug)}
+      onMouseEnter={() => prefetchSpace(space.slug, space.id)}
       className={classes.card}
       withBorder
     >
@@ -33,7 +39,7 @@ export default function SpaceGrid() {
       </Text>
 
       <Text c="dimmed" size="xs" fw={700} mt="md">
-        {formatMemberCount(space.memberCount)}
+        {formatMemberCount(space.memberCount, t)}
       </Text>
     </Card>
   ));
@@ -41,7 +47,7 @@ export default function SpaceGrid() {
   return (
     <>
       <Text fz="sm" fw={500} mb={"md"}>
-        Spaces you belong to
+        {t("Spaces you belong to")}
       </Text>
 
       <SimpleGrid cols={{ base: 1, xs: 2, sm: 3 }}>{cards}</SimpleGrid>

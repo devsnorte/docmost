@@ -7,15 +7,17 @@ import {
   usePageQuery,
   useUpdatePageMutation,
 } from "@/features/page/queries/page-query.ts";
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import classes from "@/features/page/tree/styles/tree.module.css";
 import { ActionIcon, Menu, rem } from "@mantine/core";
 import {
+  IconArrowRight,
   IconChevronDown,
   IconChevronRight,
   IconDotsVertical,
-  IconFileDescription, IconFileExport,
+  IconFileDescription,
+  IconFileExport,
   IconLink,
   IconPlus,
   IconPointFilled,
@@ -34,6 +36,7 @@ import {
 import { SpaceTreeNode } from "@/features/page/tree/types.ts";
 import {
   getPageBreadcrumbs,
+  getPageById,
   getSidebarPages,
 } from "@/features/page/services/page-service.ts";
 import { IPage, SidebarPagesParams } from "@/features/page/types/page.types.ts";
@@ -52,7 +55,9 @@ import { notifications } from "@mantine/notifications";
 import { getAppUrl } from "@/lib/config.ts";
 import { extractPageSlugId } from "@/lib";
 import { useDeletePageModal } from "@/features/page/hooks/use-delete-page-modal.tsx";
+import { useTranslation } from "react-i18next";
 import ExportModal from "@/components/common/export-modal";
+import MovePageModal from "../../components/move-page-modal.tsx";
 
 interface SpaceTreeProps {
   spaceId: string;
@@ -139,13 +144,13 @@ export default function SpaceTree({ spaceId, readOnly }: SpaceTreeProps) {
             flatTreeItems = [
               ...flatTreeItems,
               ...children.filter(
-                (child) => !flatTreeItems.some((item) => item.id === child.id)
+                (child) => !flatTreeItems.some((item) => item.id === child.id),
               ),
             ];
           };
 
           const fetchPromises = ancestors.map((ancestor) =>
-            fetchAndUpdateChildren(ancestor)
+            fetchAndUpdateChildren(ancestor),
           );
 
           // Wait for all fetch operations to complete
@@ -159,7 +164,7 @@ export default function SpaceTree({ spaceId, readOnly }: SpaceTreeProps) {
             const updatedTree = appendNodeChildren(
               data,
               rootChild.id,
-              rootChild.children
+              rootChild.children,
             );
             setData(updatedTree);
 
@@ -230,6 +235,25 @@ function Node({ node, style, dragHandle, tree }: NodeRendererProps<any>) {
   const [treeData, setTreeData] = useAtom(treeDataAtom);
   const emit = useQueryEmit();
   const { spaceSlug } = useParams();
+  const timerRef = useRef(null);
+  const { t } = useTranslation();
+
+  const prefetchPage = () => {
+    timerRef.current = setTimeout(() => {
+      queryClient.prefetchQuery({
+        queryKey: ["pages", node.data.slugId],
+        queryFn: () => getPageById({ pageId: node.data.slugId }),
+        staleTime: 5 * 60 * 1000,
+      });
+    }, 150);
+  };
+
+  const cancelPagePrefetch = () => {
+    if (timerRef.current) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
 
   async function handleLoadChildren(node: NodeApi<SpaceTreeNode>) {
     if (!node.data.hasChildren) return;
@@ -254,7 +278,7 @@ function Node({ node, style, dragHandle, tree }: NodeRendererProps<any>) {
       const updatedTreeData = appendNodeChildren(
         treeData,
         node.data.id,
-        childrenTree
+        childrenTree,
       );
 
       setTreeData(updatedTreeData);
@@ -328,6 +352,8 @@ function Node({ node, style, dragHandle, tree }: NodeRendererProps<any>) {
         className={clsx(classes.node, node.state)}
         ref={dragHandle}
         onClick={handleClick}
+        onMouseEnter={prefetchPage}
+        onMouseLeave={cancelPagePrefetch}
       >
         <PageArrow node={node} onExpandTree={() => handleLoadChildren(node)} />
 
@@ -346,7 +372,7 @@ function Node({ node, style, dragHandle, tree }: NodeRendererProps<any>) {
           />
         </div>
 
-        <span className={classes.text}>{node.data.name || "untitled"}</span>
+        <span className={classes.text}>{node.data.name || t("untitled")}</span>
 
         <div className={classes.actions}>
           <NodeMenu node={node} treeApi={tree} />
@@ -405,17 +431,22 @@ interface NodeMenuProps {
 }
 
 function NodeMenu({ node, treeApi }: NodeMenuProps) {
+  const { t } = useTranslation();
   const clipboard = useClipboard({ timeout: 500 });
   const { spaceSlug } = useParams();
   const { openDeleteModal } = useDeletePageModal();
   const [exportOpened, { open: openExportModal, close: closeExportModal }] =
     useDisclosure(false);
+  const [
+    movePageModalOpened,
+    { open: openMovePageModal, close: closeMoveSpaceModal },
+  ] = useDisclosure(false);
 
   const handleCopyLink = () => {
     const pageUrl =
       getAppUrl() + buildPageUrl(spaceSlug, node.data.slugId, node.data.name);
     clipboard.copy(pageUrl);
-    notifications.show({ message: "Link copied" });
+    notifications.show({ message: t("Link copied") });
   };
 
   return (
@@ -446,7 +477,7 @@ function NodeMenu({ node, treeApi }: NodeMenuProps) {
               handleCopyLink();
             }}
           >
-            Copy link
+            {t("Copy link")}
           </Menu.Item>
 
           <Menu.Item
@@ -457,30 +488,46 @@ function NodeMenu({ node, treeApi }: NodeMenuProps) {
               openExportModal();
             }}
           >
-            Export page
+            {t("Export page")}
           </Menu.Item>
 
           {!(treeApi.props.disableEdit as boolean) && (
             <>
-              <Menu.Divider />
+              <Menu.Item
+                leftSection={<IconArrowRight size={16} />}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  openMovePageModal();
+                }}
+              >
+                {t("Move")}
+              </Menu.Item>
 
+              <Menu.Divider />
               <Menu.Item
                 c="red"
-                leftSection={
-                  <IconTrash size={16} />
-                }
+                leftSection={<IconTrash size={16} />}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   openDeleteModal({ onConfirm: () => treeApi?.delete(node) });
                 }}
               >
-                Delete
+                {t("Delete")}
               </Menu.Item>
             </>
           )}
         </Menu.Dropdown>
       </Menu>
+
+      <MovePageModal
+        pageId={node.id}
+        slugId={node.data.slugId}
+        currentSpaceSlug={spaceSlug}
+        onClose={closeMoveSpaceModal}
+        open={movePageModalOpened}
+      />
 
       <ExportModal
         type="page"

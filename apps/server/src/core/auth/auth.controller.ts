@@ -1,11 +1,12 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   HttpCode,
   HttpStatus,
-  NotFoundException,
   Post,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import { LoginDto } from './dto/login.dto';
@@ -21,6 +22,9 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { PasswordResetDto } from './dto/password-reset.dto';
 import { VerifyUserTokenDto } from './dto/verify-user-token.dto';
+import { FastifyReply } from 'fastify';
+import { addDays } from 'date-fns';
+import { validateSsoEnforcement } from './auth.util';
 
 @Controller('auth')
 export class AuthController {
@@ -31,26 +35,29 @@ export class AuthController {
 
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  async login(@Req() req, @Body() loginInput: LoginDto) {
-    return this.authService.login(loginInput, req.raw.workspaceId);
-  }
+  async login(
+    @AuthWorkspace() workspace: Workspace,
+    @Res({ passthrough: true }) res: FastifyReply,
+    @Body() loginInput: LoginDto,
+  ) {
+    validateSsoEnforcement(workspace);
 
-  /* @HttpCode(HttpStatus.OK)
-  @Post('register')
-  async register(@Req() req, @Body() createUserDto: CreateUserDto) {
-    return this.authService.register(createUserDto, req.raw.workspaceId);
+    const authToken = await this.authService.login(loginInput, workspace.id);
+    this.setAuthCookie(res, authToken);
   }
-  */
 
   @UseGuards(SetupGuard)
   @HttpCode(HttpStatus.OK)
   @Post('setup')
   async setupWorkspace(
-    @Req() req,
+    @Res({ passthrough: true }) res: FastifyReply,
     @Body() createAdminUserDto: CreateAdminUserDto,
   ) {
-    if (this.environmentService.isCloud()) throw new NotFoundException();
-    return this.authService.setup(createAdminUserDto);
+    const { workspace, authToken } =
+      await this.authService.setup(createAdminUserDto);
+
+    this.setAuthCookie(res, authToken);
+    return workspace;
   }
 
   @UseGuards(JwtAuthGuard)
@@ -70,16 +77,22 @@ export class AuthController {
     @Body() forgotPasswordDto: ForgotPasswordDto,
     @AuthWorkspace() workspace: Workspace,
   ) {
-    return this.authService.forgotPassword(forgotPasswordDto, workspace.id);
+    validateSsoEnforcement(workspace);
+    return this.authService.forgotPassword(forgotPasswordDto, workspace);
   }
 
   @HttpCode(HttpStatus.OK)
   @Post('password-reset')
   async passwordReset(
+    @Res({ passthrough: true }) res: FastifyReply,
     @Body() passwordResetDto: PasswordResetDto,
     @AuthWorkspace() workspace: Workspace,
   ) {
-    return this.authService.passwordReset(passwordResetDto, workspace.id);
+    const authToken = await this.authService.passwordReset(
+      passwordResetDto,
+      workspace.id,
+    );
+    this.setAuthCookie(res, authToken);
   }
 
   @HttpCode(HttpStatus.OK)
@@ -89,5 +102,31 @@ export class AuthController {
     @AuthWorkspace() workspace: Workspace,
   ) {
     return this.authService.verifyUserToken(verifyUserTokenDto, workspace.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @Post('collab-token')
+  async collabToken(
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    return this.authService.getCollabToken(user.id, workspace.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @Post('logout')
+  async logout(@Res({ passthrough: true }) res: FastifyReply) {
+    res.clearCookie('authToken');
+  }
+
+  setAuthCookie(res: FastifyReply, token: string) {
+    res.setCookie('authToken', token, {
+      httpOnly: true,
+      path: '/',
+      expires: addDays(new Date(), 30),
+      secure: this.environmentService.isHttps(),
+    });
   }
 }
