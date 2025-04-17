@@ -6,6 +6,7 @@ import {
 import { Injectable, Logger } from '@nestjs/common';
 import { EnvironmentService } from '../environment/environment.service';
 import { Redis } from 'ioredis';
+import { parseRedisUrl } from 'src/common/helpers/utils';
 
 @Injectable()
 export class RedisHealthIndicator extends HealthIndicator {
@@ -17,8 +18,16 @@ export class RedisHealthIndicator extends HealthIndicator {
 
   async pingCheck(key: string): Promise<HealthIndicatorResult> {
     try {
-      const redis = new Redis(this.environmentService.getRedisUrl(), {
+      const { host, port, password, db } = parseRedisUrl(
+        this.environmentService.getRedisUrl(),
+      );
+      const redis = new Redis({
+        host,
+        port,
+        password,
+        db,
         maxRetriesPerRequest: 15,
+        family: 6,
       });
 
       await redis.ping();

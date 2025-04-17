@@ -38,6 +38,7 @@ export class CollaborationGateway {
             password: this.redisConfig.password,
             db: this.redisConfig.db,
             retryStrategy: createRetryStrategy(),
+            family: 6,
           },
         }),
       ],

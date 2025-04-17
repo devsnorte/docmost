@@ -17,6 +17,7 @@ import { QueueName } from './constants';
             password: redisConfig.password,
             db: redisConfig.db,
             retryStrategy: createRetryStrategy(),
+            family: 6,
           },
           defaultJobOptions: {
             attempts: 3,
