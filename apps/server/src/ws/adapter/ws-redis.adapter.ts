@@ -20,8 +20,8 @@ export class WsRedisIoAdapter extends IoAdapter {
       retryStrategy: createRetryStrategy(),
     };
 
-    const pubClient = new Redis(process.env.REDIS_URL, options);
-    const subClient = new Redis(process.env.REDIS_URL, options);
+    const pubClient = new Redis(options);
+    const subClient = new Redis(options);
 
     this.adapterConstructor = createAdapter(pubClient, subClient);
   }

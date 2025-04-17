@@ -145,6 +145,10 @@ export class EnvironmentService {
     return this.configService.get<string>('DRAWIO_URL');
   }
 
+  getResendApiToken(): string {
+    return this.configService.get<string>('RESEND_API_TOKEN');
+  }
+
   isCloud(): boolean {
     const cloudConfig = this.configService
       .get<string>('CLOUD', 'false')
